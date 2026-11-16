@@ -830,12 +830,11 @@ dialog[open]{animation:fadein .16s ease}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 <style>
-.ops-head{height:54px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 22px;border-bottom:1px solid #3a3042;background:#141017}
-.ops-head a{text-decoration:none;color:#ece5f5}.ops-head>a{font-size:18px;font-weight:700;letter-spacing:-.05em;display:flex;align-items:center;gap:6px}
-.ops-head img{width:24px}.ops-head nav{display:flex;gap:18px;font-size:12px}.operations .app,.operations main,.operations .side{height:calc(100dvh - 54px)}
+body.operations { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; }
+.operations .app { height: auto; min-height: 0; }
+.operations main { height: 100%; min-height: 0; }
 .operations #heroSlot,.operations .side-head .logo,.operations .side-head .mark{display:none}.operations .side-head{padding-bottom:4px}
 .operations .review-shelf,.operations #ov>.tiles{display:none}.operations .topbar h1{font-size:22px;letter-spacing:-.045em}
-@media(max-width:580px){.ops-head{padding:0 8px}.ops-head nav{gap:8px;font-size:11px}.ops-head>a{font-size:14px}}
 @media(min-width:761px){
 .operations .app,.operations .app.mini{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
 .operations .side{position:static;width:100%;min-height:46px;height:auto;display:flex;flex-direction:row;gap:12px;align-items:center;padding:5px 22px;border-bottom:1px solid #3b3344;background:#1a161f}
@@ -854,13 +853,10 @@ dialog[open]{animation:fadein .16s ease}
 .ai-form summary { cursor: pointer; color: var(--brand-deep); }
 .ai-form details label { margin-top: 14px; }
 #ai_result { margin-top: 14px; }
-@media(max-width:570px) {
-  .ops-head { height: auto; gap: 4px; flex-wrap: wrap; padding: 8px 12px; }
-  .ops-head nav { width: 100%; gap: 14px; }
-  .operations .app { height: calc(100dvh - 70px); }
-}
-</style></head>
-<body class="operations"><header class="ops-head"><a href="/app"><img src="/brand/favicon.svg" alt="">Endrox Studio</a><nav aria-label="Workspace"><a href="/app/media">Your clips</a><a href="/app/editor">Editor</a><a href="/app/operations">Live &amp; publishing</a><a href="/app/settings/ai">Settings</a></nav></header>
+</style>
+<link rel="stylesheet" href="/assets/studio-header.css?v=1"><script src="/assets/studio-header.js?v=1" defer></script>
+</head>
+<body class="operations"><studio-header role="banner"></studio-header>
 <div class="app" id="app">
   <aside class="side" aria-label="Sidebar">
     <div class="side-head"><img class="logo" src="/brand/logo-light.svg" alt="Endrox"><img class="mark" src="/brand/favicon.svg" alt="Endrox">
@@ -1371,6 +1367,7 @@ addEventListener("popstate", () => { const [v, tab] = fromPath(location.pathname
 function go(v, tab, fromHistory) {
   if (v.startsWith("c:") && !S.creators.some(c => "c:" + c.id === v)) v = "overview";
   document.body.classList.toggle("settings-view", v === "settings");
+  document.querySelector("studio-header").selectPath?.(pathFor(v));
   S.view = v; if (tab) S.ctab = tab; else if (!v.startsWith("c:")) S.ctab = "clips";
   if (v === "settings") S.stab = setTabs().some(x => x[0] === tab) ? tab : setTabs()[0][0];
   if (!fromHistory) remember(v, v.startsWith("c:") ? S.ctab : v === "settings" ? S.stab : null);

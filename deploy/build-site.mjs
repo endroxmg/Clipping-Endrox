@@ -11,6 +11,10 @@ if (value) {
 }
 mkdirSync("dist", { recursive: true });
 cpSync("deploy/entry", "dist", { recursive: true });
+mkdirSync("dist/assets", { recursive: true });
+for (const asset of ["studio-header.css", "studio-header.js"]) {
+  cpSync("web/" + asset, "dist/assets/" + asset);
+}
 cpSync("web/brand/favicon.svg", "dist/mark.svg");
 cpSync("web/brand/gameplay.jpg", "dist/gameplay.jpg");
 writeFileSync("dist/workspace.js", "window.ENDROX_STUDIO_URL = " + JSON.stringify(origin) + ";\n");

@@ -14,6 +14,11 @@ const aliases = {"/workbench.html":"/app/editor", "/index.html":"/", "/settings"
 let path = location.pathname.replace(/\/$/, "") || "/";
 path = aliases[path] || path;
 if (path === "/app") path = "/app/editor";
+const header = document.querySelector("studio-header");
+header.selectPath(path);
+for (const link of header.querySelectorAll("nav a, .studio-import")) {
+  link.dataset.path = link.getAttribute("href");
+}
 if (path !== "/") {
   const [heading, hint, action] = routes[path] || ["Open your studio", "Continue to this page in your Endrox workspace.", "Continue"];
   title.textContent = heading;

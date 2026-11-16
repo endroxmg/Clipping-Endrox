@@ -25,10 +25,10 @@ function notify(message){$("notice").textContent=message;$("notice").hidden=fals
 function dirty(){state.dirty=true;$("saveState").textContent="Unsaved changes";$("save").disabled=state.rendering;}
 window.addEventListener("beforeunload",e=>{if(state.dirty){e.preventDefault();e.returnValue="";}});
 function entries(){return state.jobs.flatMap(job=>job.clips.filter(c=>c.status==="done").map(clip=>({job,clip})));}
-function mediaPage(){return location.pathname.endsWith("/media");}
+function mediaPage(){return /^\/app\/media\/?$/.test(location.pathname);}
 function setPage(){
   $("desk").hidden=mediaPage();$("mediaPool").hidden=!mediaPage();
-  $("navEditor").classList.toggle("active",!mediaPage());$("navMedia").classList.toggle("active",mediaPage());
+  document.querySelector("studio-header").selectPath(location.pathname);
   if(mediaPage())video.pause();
 }
 function mediaPool(){
@@ -414,7 +414,12 @@ document.addEventListener("click",e=>{
   const c=e.target.closest(".reel");if(c)selectEntry(c.dataset.job+"/"+c.dataset.clip);
 });
 $("search").oninput=mediaPool;
-$("import").onclick=$("emptyImport").onclick=()=>{if(!state.rendering)$("importDialog").showModal();};
+$("import").onclick = event => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  if (!state.rendering) $("importDialog").showModal();
+};
+$("emptyImport").onclick = () => $("import").click();
 $("closeImport").onclick=()=>$("importDialog").close();
 $("importForm").onsubmit=async e=>{
   e.preventDefault();const file=$("localFile").files[0],url=$("link").value.trim(),msg=$("importMessage");
