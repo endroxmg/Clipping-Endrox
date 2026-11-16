@@ -1,5 +1,6 @@
 {
   "framework": null,
+  "installCommand": "",
   "buildCommand": "node deploy/build-site.mjs",
   "outputDirectory": "dist",
   "rewrites": [
