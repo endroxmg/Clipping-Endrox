@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const names = {face:"Facecam",game:"Gameplay",caption:"Captions"};
 const colors = {face:"#c8a3ff",game:"#91c9bc",caption:"#eabf8c"};
-const state = {jobs:[],clip:null,job:null,layer:"face",cropping:false,dirty:false,loading:0,words:[],guides:true,rendering:false,offline:false};
+const state = {jobs:[],clip:null,job:null,layer:"face",cropping:false,dirty:false,loading:0,words:[],guides:true,rendering:false};
 const video = $("source"), canvas = $("stage"), pen = canvas.getContext("2d");
 const escapeText = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clamp = (n,lo,hi)=>Math.max(lo,Math.min(hi,n));
@@ -32,30 +32,22 @@ function setPage(){
   if(mediaPage())video.pause();
 }
 function mediaPool(){
-  if(state.offline){
-    $("mediaContent").innerHTML='<section class="offline-panel"><div class="offline-mark">E</div><h2>Connect Endrox to start clipping</h2><p>This page is the clip room. The processing service is not connected to this deployment yet.</p><p>Run <b>Start Endrox.command</b> for the complete local editor, or connect this UI to the Endrox server URL.</p></section>';
-    return;
-  }
   const query=$("search").value.toLowerCase();
   $("mediaContent").innerHTML=state.jobs.map(j=>{
-    const title=j.title||j.source.name;
+    const title=j.title||j.source?.name||"Untitled recording";
     const clips=j.clips.filter(c=>!query||[title,c.title,c.hook].some(v=>(v||"").toLowerCase().includes(query)));
     if(query&&!clips.length&&!title.toLowerCase().includes(query))return "";
     return '<section class="media-group"><h2>'+escapeText(title)+'</h2><p>'+escapeText(j.error||j.stage||j.status)+' · '+clockTime(j.duration)+' · '+clips.length+' clips</p><div class="reels">'+clips.map(c=>{
       const button=c.status==="done";
       return '<button class="reel" data-job="'+escapeText(j.id)+'" data-clip="'+escapeText(c.id)+'" '+(button?"":"disabled")+'>'+(button?'<img loading="lazy" alt="" src="/media/'+encodeURIComponent(j.id)+'/'+encodeURIComponent(c.cover)+'?v='+c.version+'">':'')+'<span>'+escapeText(c.title||c.id)+'</span><small>'+clockTime(c.end-c.start)+' · '+(button?'Open editor ↗':escapeText(c.status))+'</small></button>';
     }).join("")+'</div></section>';
-  }).join("")||'<p class="dim">No matching footage. Import a recording to find clips.</p>';
+  }).join("")||(query?'<p>No clips match your search.</p>':'<section class="library-empty"><h2>Make your first clip</h2><p>Choose a video or paste a stream link. Your highlights will appear here for editing.</p><button class="violet" data-import>Import footage</button></section>');
 }
 function clipURL(job,clip){return "/api/jobs/"+encodeURIComponent(job.id)+"/clips/"+encodeURIComponent(clip.id);}
-function showUnavailable(message){
-  state.offline=true;setPage();mediaPool();$("save").disabled=true;$("saveState").textContent="Service not connected";
-  $("empty").hidden=false;canvas.hidden=true;$("empty").innerHTML='<div class="offline-panel"><div class="offline-mark">E</div><h2>Connect Endrox to edit clips</h2><p>'+escapeText(message||"The processing service is not connected to this deployment yet.")+'</p><p>Run <b>Start Endrox.command</b> for local clipping, or connect this UI to the Endrox server.</p></div>';
-}
 function chooseLayer(layer,cropping=false){
   state.layer=layer;state.cropping=cropping&&layer!=="caption";
   $("layerList").innerHTML=Object.keys(names).map((k,i)=>'<button class="layer '+k+(k===layer?' active':'')+'" data-layer="'+k+'" aria-pressed="'+(k===layer)+'"><i>'+["V2","V1","CC"][i]+'</i><b>'+names[k]+'</b></button>').join("");
-  $("viewerTitle").textContent=state.cropping?"Source crop · "+names[layer]:"Program monitor";
+  $("viewerTitle").textContent=state.cropping?"Source crop · "+names[layer]:"Clip preview";
   $("viewFormat").textContent=state.cropping?"Original frame":"9:16 · 1080p";
   $("mat").classList.toggle("crop",state.cropping);
   canvas.style.aspectRatio=state.cropping&&video.videoWidth?video.videoWidth+"/"+video.videoHeight:"9/16";
@@ -400,8 +392,8 @@ function selectEntry(id){
   history.replaceState(null,"","/app?job="+encodeURIComponent(item.job.id)+"&clip="+encodeURIComponent(item.clip.id));setPage();openClip(item.job,item.clip);
 }
 async function refresh(){
-  try{state.jobs=await request("/api/jobs");state.offline=false;mediaPool();}
-  catch(err){showUnavailable(err.message);return;}
+  try{state.jobs=await request("/api/jobs");$("serviceError").hidden=true;mediaPool();}
+  catch(err){$("serviceError").querySelector("span").textContent="Could not load your library. Check that Endrox is running."; $("serviceError").hidden=false;return;}
   const items=entries();$("clipPicker").innerHTML=items.map(({job,clip})=>'<option value="'+escapeText(job.id+"/"+clip.id)+'">'+escapeText(clip.title||clip.id)+'</option>').join("");
   if(state.clip){$("clipPicker").value=state.job.id+"/"+state.clip.id;return;}
   const params=new URLSearchParams(location.search);
@@ -416,6 +408,7 @@ $("guides").onclick=()=>{state.guides=!state.guides;$("guides").setAttribute("ar
 $("clipPicker").onchange=e=>selectEntry(e.target.value);
 $("cropButton").onclick=()=>chooseLayer(state.layer,true);
 document.addEventListener("click",e=>{
+  if(e.target.closest("[data-import]"))$("import").click();
   const l=e.target.closest("[data-layer]");if(l)chooseLayer(l.dataset.layer);
   const lane=e.target.closest("[data-lane]");if(lane&&state.clip){chooseLayer(lane.dataset.lane);const r=lane.getBoundingClientRect();seek(state.clip.start+(e.clientX-r.left)/r.width*(state.clip.end-state.clip.start));}
   const c=e.target.closest(".reel");if(c)selectEntry(c.dataset.job+"/"+c.dataset.clip);
@@ -444,6 +437,13 @@ $("importForm").onsubmit=async e=>{
   finally{button.disabled=false;}
 };
 window.addEventListener("popstate",()=>{setPage();refresh().catch(e=>notify(e.message));});
+$("retryService").onclick=()=>refresh().catch(e=>notify(e.message));
+const entryUrl=new URL(location.href);
+if(entryUrl.searchParams.get("import")==="1"){
+  entryUrl.searchParams.delete("import");
+  history.replaceState(null,"",entryUrl);
+  $("importDialog").showModal();
+}
 setPage();chooseLayer("face");refresh().catch(err=>notify(err.message));
 setInterval(()=>{if(!document.hidden&&!state.rendering)refresh().catch(()=>{});},6000);
 

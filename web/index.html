@@ -436,7 +436,7 @@ img.av{object-fit:cover}
 .set-link small{display:block;font-size:12px;color:var(--faint);line-height:1.4}
 .set-link:hover{background:var(--muted)}
 .set-link.on{background:var(--brand-soft)}.set-link.on svg{color:var(--brand-deep)}.set-link.on b{color:var(--brand-ink)}
-.set-body{min-width:0;animation:rise .25s ease both}
+.set-body{min-width:0}
 .ai-form{display:grid;gap:18px;max-width:560px}
 .ai-form select{width:100%}
 .ai-form .with{display:flex;gap:8px}.ai-form .with input{flex:1;min-width:0}
@@ -847,8 +847,20 @@ dialog[open]{animation:fadein .16s ease}
 .operations .topbar,.operations .content{max-width:1440px;margin-inline:auto}.operations .topbar{padding-top:16px}
 .operations .app.mini .nav-item .label{display:inline}.operations .nav-item.on{background:#382944;color:#e7d5f7}
 }
+.operations.settings-view .side,.operations.settings-view #menuBtn { display: none; }
+.operations.settings-view .app { display: block; }
+.operations.settings-view .content,.operations.settings-view .topbar { max-width: 1100px; margin-inline: auto; }
+.ai-form details { border-top: 1px solid var(--line); padding-top: 12px; }
+.ai-form summary { cursor: pointer; color: var(--brand-deep); }
+.ai-form details label { margin-top: 14px; }
+#ai_result { margin-top: 14px; }
+@media(max-width:570px) {
+  .ops-head { height: auto; gap: 4px; flex-wrap: wrap; padding: 8px 12px; }
+  .ops-head nav { width: 100%; gap: 14px; }
+  .operations .app { height: calc(100dvh - 70px); }
+}
 </style></head>
-<body class="operations"><header class="ops-head"><a href="/app"><img src="/brand/favicon.svg" alt="">Endrox Studio</a><nav><a href="/app">Editor</a><a href="/app/media">Media pool</a><a href="/app/operations">Channels &amp; publishing</a></nav></header>
+<body class="operations"><header class="ops-head"><a href="/app"><img src="/brand/favicon.svg" alt="">Endrox Studio</a><nav aria-label="Workspace"><a href="/app/media">Your clips</a><a href="/app/editor">Editor</a><a href="/app/operations">Live &amp; publishing</a><a href="/app/settings/ai">Settings</a></nav></header>
 <div class="app" id="app">
   <aside class="side" aria-label="Sidebar">
     <div class="side-head"><img class="logo" src="/brand/logo-light.svg" alt="Endrox"><img class="mark" src="/brand/favicon.svg" alt="Endrox">
@@ -1358,6 +1370,7 @@ function remember(v, tab, how = "push") {
 addEventListener("popstate", () => { const [v, tab] = fromPath(location.pathname); go(v, tab, true); });
 function go(v, tab, fromHistory) {
   if (v.startsWith("c:") && !S.creators.some(c => "c:" + c.id === v)) v = "overview";
+  document.body.classList.toggle("settings-view", v === "settings");
   S.view = v; if (tab) S.ctab = tab; else if (!v.startsWith("c:")) S.ctab = "clips";
   if (v === "settings") S.stab = setTabs().some(x => x[0] === tab) ? tab : setTabs()[0][0];
   if (!fromHistory) remember(v, v.startsWith("c:") ? S.ctab : v === "settings" ? S.stab : null);
@@ -2045,7 +2058,7 @@ function drawUsage() {
 /* ============================================================ settings */
 // With sign-in off there is no profile or password to manage. The AI section is for whoever runs the server.
 const setTabs = () => [
-  ...(S.status.user?.is_admin ? [["ai", "AI", "bolt", "Your AI service, model and key"]] : []),
+  ...(S.status.user?.is_admin ? [["ai", "AI & API key", "bolt", "Provider, key and model"]] : []),
   ...(S.status.accounts === false ? [] : [["profile", "Profile", "user", "Your name, email and how you sign in"],
                                           ["security", "Security", "lock", "Password and signing out"]]),
   ["apps", "Connected apps", "plug", "Where your clips get posted"],
@@ -2064,21 +2077,22 @@ async function drawSettings() {
   const tab = S.stab || setTabs()[0][0], me = S.status.user;
   box.innerHTML = `<div class="set-layout"><nav class="set-nav" aria-label="Settings sections">${setTabs().map(([k, l, i, h]) =>
       `<a href="${pathFor("settings", k)}" class="set-link ${k === tab ? "on" : ""}" data-act="settab" data-k="${k}">${ic(i)}<span><b>${l}</b><small>${h}</small></span></a>`).join("")}</nav>
-    <div class="set-body" id="setbody"><div class="set-load">Loading…</div></div></div>`;
+    <div><p class="help" ${me?.is_admin ? "hidden" : ""}>The studio administrator manages the AI provider and API key.</p><div class="set-body" id="setbody"><div class="set-load">Loading…</div></div></div></div>`;
   const body = $("#setbody");
   try {
     if (tab === "ai") {
       const k = S.ai = await api("/api/ai");
-      body.innerHTML = `<section class="set-sec"><h2>AI</h2><p class="help">Endrox uses an AI model to pick the moments worth clipping and to write hooks, titles and captions. Use your own key from any of these services. You pay that service directly. Without a key, clips are picked using speech, pauses and audio activity.</p>
+      body.innerHTML = `<section class="set-sec"><h2>AI &amp; API key</h2><p class="help">Choose your provider, paste its API key and select <b>Save and test</b>. Endrox uses it to find highlights and write captions. Your provider bills your account for AI usage.</p>
           <div class="ai-state">${k.ready ? `<span class="pill ok">${ic("check")}Ready</span><span class="sub">${esc(k.label)} · ${esc(k.models[0] || "")}</span>` : `<span class="pill warn">Not set up</span><span class="sub">Choose a service, paste your key and pick a model.</span>`}</div>
           <div class="ai-form">
             <label class="f">AI service<select id="ai_provider">${k.providers.map(x => `<option value="${esc(x.id)}" ${x.id === k.provider ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>
-            <label class="f">Key<input id="ai_key" type="password" autocomplete="off" spellcheck="false"><span class="hint" id="ai_keyhint"></span></label>
+            <label class="f">API key<input id="ai_key" type="password" autocomplete="off" spellcheck="false"><span class="hint" id="ai_keyhint"></span></label>
+            <details id="modelOptions" ${k.provider === "custom" || !k.models.length ? "open" : ""}><summary>Model and advanced options</summary>
             <label class="f" id="ai_basewrap">Address<input id="ai_base" value="${esc(k.base_url || "")}" spellcheck="false"><span class="hint">Where the service answers. Only needed for a custom service.</span></label>
             <label class="f">Model<span class="with"><input id="ai_model" list="ai_models" value="${esc(k.models.join(", "))}" spellcheck="false"><button class="btn" type="button" data-act="aimodels">Find models</button></span>
-              <datalist id="ai_models"></datalist><span class="hint">A fast, inexpensive model is the right choice. Add a second one after a comma to fall back on.</span></label>
+              <datalist id="ai_models"></datalist><span class="hint">A fast, inexpensive model is the right choice. Add a second one after a comma to fall back on.</span></label></details>
           </div>
-          <div class="row" style="margin-top:20px"><button class="btn primary" data-act="aisave">Save and test</button>${k.ready ? `<button class="btn" data-act="aitest">Test again</button>` : ""}</div></section>`;
+          <div class="row" style="margin-top:20px"><button class="btn primary" data-act="aisave">Save and test</button>${k.ready ? `<button class="btn" data-act="aitest">Test again</button>` : ""}</div><p role="status" id="ai_result"></p></section>`;
       aiHints();
     }
     if (tab === "profile") {
@@ -2270,7 +2284,15 @@ document.addEventListener("dragleave", () => $(".composer")?.classList.remove("o
 document.addEventListener("drop", e => { const a = $(".composer"); if (a) { e.preventDefault(); a.classList.remove("over"); attach(e.dataTransfer.files); } });
 document.addEventListener("change", async e => {
   const t = e.target;
-  if (t.id === "ai_provider") { $("#ai_models").innerHTML = ""; if (S.ai && t.value !== S.ai.provider) { $("#ai_model").value = ""; $("#ai_base").value = ""; } return aiHints(); }
+  if (t.id === "ai_provider") {
+    const saved = t.value === S.ai.provider;
+    $("#ai_key").value = "";
+    $("#ai_models").innerHTML = "";
+    $("#modelOptions").open = t.value === "custom";
+    $("#ai_model").value = saved ? S.ai.models.join(", ") : S.ai.providers.find(p => p.id === t.value)?.example || "";
+    $("#ai_base").value = saved ? S.ai.base_url || "" : "";
+    return aiHints();
+  }
   if (t.dataset.sel) {
     const k = t.dataset.sel;
     if (t.checked) sel().add(k); else sel().delete(k);
@@ -2314,8 +2336,10 @@ document.addEventListener("click", async e => {
         let ok = null, why = "";
         try { ok = await send("/api/ai/test"); } catch (err) { why = err.message; }
         S.status = await api("/api/status"); drawShell(); await drawSettings();
-        if (ok) toast(`Saved. ${ok.model} answered, so the AI is ready.`, "ok");
-        else toast(`Saved, but the test failed. ${why}`, "bad");
+        const result = ok ? `Connection verified. ${ok.model} answered.` : `Connection test failed. ${why}`;
+        const message = (a === "aisave" ? "Settings saved. " : "") + result;
+        if ($("#ai_result")) $("#ai_result").textContent = message;
+        else toast(message, ok ? "ok" : "bad");
       } finally { b.disabled = false; }
       return;
     }
@@ -2538,7 +2562,7 @@ $("#main").addEventListener("scroll", () => $(".topbar").classList.toggle("stuck
   if (q.get("verify_error")) { history.replaceState(null, "", location.pathname); setTimeout(() => toast(q.get("verify_error"), "bad"), 300); }
   if (location.pathname.startsWith("/app/")) { const [v, tab] = fromPath(location.pathname); S.view = v; S.ctab = tab; }  // the address decides, before anything loads
   await tick();
-  { const [v, tab] = location.pathname.startsWith("/app/") ? fromPath(location.pathname) : ["overview", "clips"]; go(v, tab, true); remember(S.view, S.ctab, "replace"); }
+  { const [v, tab] = location.pathname.startsWith("/app/") ? fromPath(location.pathname) : ["overview", "clips"]; go(v, tab, true); remember(S.view, S.view === "settings" ? S.stab : S.ctab, "replace"); }
   try {  // a link pasted on the home page before signing up
     const link = sessionStorage.getItem("peakcut_link");
     if (link) { sessionStorage.removeItem("peakcut_link"); go("overview"); $("#url").value = link; onLink($("#url")); $("#url").focus(); toast("Your link is ready. Press Make clips.", "ok"); }

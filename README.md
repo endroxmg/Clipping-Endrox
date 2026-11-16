@@ -2,6 +2,10 @@
 
 Open **Start Endrox.command** on this Mac. Import a recording or video link and choose **Webcam stack** to place the embedded camera above gameplay. Endrox samples several frames to locate the camera. Use **Adjust source crop** to draw the exact region for either video layer.
 
+Open **Settings → AI & API key**, choose a provider, paste your key and select **Save and test**. A successful test names the model that answered. On shared installations, an administrator manages the key. **Live & publishing** opens channels, recording and publishing controls.
+
+The Vercel site opens your running workspace. On the computer running Endrox, the default address is `http://127.0.0.1:8767`. From another device, choose **Change workspace** and enter the HTTPS address of your Endrox server. To set a shared default, use the Vercel build environment variable `ENDROX_STUDIO_URL` and redeploy. The server hosts the editor and handles credentials and media.
+
 Finished clips open in the sequence editor. Select a layer and drag it or its corner handles on the program monitor, or enter its position and size in the inspector. Captions have editable word text, start and end times, size and sync offset. You can add missing words, slow playback for proofreading, or import and export clip-relative SRT subtitles. **Save & render** writes the edited MP4. The editor keeps the original recording for further changes.
 
 For gaming names and callouts, enter spellings during import and choose Hindi / Hinglish when appropriate. The media pool lists queued footage and finished cuts. Channels, recording and publishing are in the top navigation.

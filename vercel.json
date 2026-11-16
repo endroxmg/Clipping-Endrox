@@ -1,18 +1,10 @@
 {
+  "framework": null,
+  "buildCommand": "node deploy/build-site.mjs",
+  "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/app", "destination": "/workbench.html" },
-    { "source": "/app/editor", "destination": "/workbench.html" },
-    { "source": "/app/media", "destination": "/workbench.html" },
     { "source": "/app/:path*", "destination": "/index.html" },
-    { "source": "/login", "destination": "/auth.html" },
-    { "source": "/signup", "destination": "/auth.html" },
-    { "source": "/reset", "destination": "/reset.html" },
-    { "source": "/privacy", "destination": "/legal.html" },
-    { "source": "/terms", "destination": "/legal.html" },
-    { "source": "/acceptable-use", "destination": "/legal.html" },
-    { "source": "/assets/workbench.css", "destination": "/workbench.css" },
-    { "source": "/assets/workbench.js", "destination": "/workbench.js" },
-    { "source": "/assets/gradient-ascii.js", "destination": "/gradient-ascii.js" },
-    { "source": "/assets/caption-font.ttf", "destination": "/studio/fonts/Poppins-ExtraBold.ttf" }
+    { "source": "/:page(login|signup|settings|reset|admin|privacy|terms|acceptable-use)", "destination": "/index.html" },
+    { "source": "/:page(workbench|auth|admin|reset|landing|legal).html", "destination": "/index.html" }
   ]
 }

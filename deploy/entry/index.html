@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100e14"><meta name="referrer" content="no-referrer">
+  <title>Endrox Studio</title><link rel="icon" href="/mark.svg"><link rel="stylesheet" href="/studio.css">
+  <script src="/workspace.js" defer></script><script src="/entry.js" defer></script>
+</head>
+<body>
+  <header><div class="bar"><a class="brand" href="/"><img src="/mark.svg" alt="">endrox <span>Studio</span></a>
+    <nav aria-label="Workspace"><a data-path="/app/media">Your clips</a><a data-path="/app/settings/ai">Settings</a></nav></div></header>
+  <main>
+    <section class="hero">
+      <div class="intro"><h1 id="title">Make a clip</h1>
+        <p id="description">Import a recording or paste a stream link. Pick a highlight, adjust the timing and captions, then export your video.</p>
+        <a class="primary" id="open" data-path="/app/media?import=1">Import footage</a>
+      </div><img class="still" src="/gameplay.jpg" alt="A frame from a PUBG recording">
+    </section>
+    <div class="actions">
+      <a data-path="/app/media"><b>Your clips</b><span>Find a recording and edit a highlight.</span></a>
+      <a data-path="/app/settings/ai"><b>AI &amp; API key</b><span>Choose a provider, save your key and test it.</span></a>
+      <a data-path="/app/operations"><b>Live &amp; publishing</b><span>Record channels and publish finished clips.</span></a>
+    </div>
+    <section class="connection"><div><h2 id="place">Workspace on this computer</h2>
+      <p id="where">On your Mac, run Start Endrox.command while editing. Your videos and API key stay in that studio.</p></div>
+      <details><summary>Change workspace</summary><form id="connect">
+        <label for="origin">Endrox server address</label><input id="origin" type="url" placeholder="https://studio.example.com" required>
+        <p>Use the address of your running Endrox installation.</p>
+        <button type="submit">Use server</button> <button type="button" id="local">Use this computer</button>
+        <p role="alert" id="problem"></p>
+      </form></details>
+    </section>
+    <noscript>Enable JavaScript or <a href="http://127.0.0.1:8767/app/settings/ai">open the studio on this computer</a>.</noscript>
+  </main>
+</body></html>
