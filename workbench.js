@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const names = {face:"Facecam",game:"Gameplay",caption:"Captions"};
 const colors = {face:"#c8a3ff",game:"#91c9bc",caption:"#eabf8c"};
-const state = {jobs:[],clip:null,job:null,layer:"face",cropping:false,dirty:false,loading:0,words:[],guides:true,rendering:false};
+const state = {jobs:[],clip:null,job:null,layer:"face",cropping:false,dirty:false,loading:0,words:[],guides:true,rendering:false,offline:false};
 const video = $("source"), canvas = $("stage"), pen = canvas.getContext("2d");
 const escapeText = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clamp = (n,lo,hi)=>Math.max(lo,Math.min(hi,n));
@@ -14,7 +14,9 @@ function clockTime(t, precise=false){
 async function request(url,options){
   const res=await fetch(url,options);
   if(res.status===401){location.assign("/login");throw Error("Sign in to continue.");}
-  if(!res.ok){const data=await res.json().catch(()=>({}));throw Error(data.detail || "Request failed ("+res.status+").");}
+  const type=res.headers.get("content-type")||"";
+  if(!res.ok){const data=type.includes("json")?await res.json().catch(()=>({})):{};throw Error(data.detail || (res.status===404?"The Endrox processing service is not connected to this deployment yet.":"Endrox could not complete that request."));}
+  if(!type.includes("json"))throw Error("The Endrox processing service is not connected to this deployment yet.");
   return res.json();
 }
 const post=(url,data)=>request(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
@@ -30,6 +32,10 @@ function setPage(){
   if(mediaPage())video.pause();
 }
 function mediaPool(){
+  if(state.offline){
+    $("mediaContent").innerHTML='<section class="offline-panel"><div class="offline-mark">E</div><h2>Connect Endrox to start clipping</h2><p>This page is the clip room. The processing service is not connected to this deployment yet.</p><p>Run <b>Start Endrox.command</b> for the complete local editor, or connect this UI to the Endrox server URL.</p></section>';
+    return;
+  }
   const query=$("search").value.toLowerCase();
   $("mediaContent").innerHTML=state.jobs.map(j=>{
     const title=j.title||j.source.name;
@@ -42,6 +48,10 @@ function mediaPool(){
   }).join("")||'<p class="dim">No matching footage. Import a recording to find clips.</p>';
 }
 function clipURL(job,clip){return "/api/jobs/"+encodeURIComponent(job.id)+"/clips/"+encodeURIComponent(clip.id);}
+function showUnavailable(message){
+  state.offline=true;setPage();mediaPool();$("save").disabled=true;$("saveState").textContent="Service not connected";
+  $("empty").hidden=false;canvas.hidden=true;$("empty").innerHTML='<div class="offline-panel"><div class="offline-mark">E</div><h2>Connect Endrox to edit clips</h2><p>'+escapeText(message||"The processing service is not connected to this deployment yet.")+'</p><p>Run <b>Start Endrox.command</b> for local clipping, or connect this UI to the Endrox server.</p></div>';
+}
 function chooseLayer(layer,cropping=false){
   state.layer=layer;state.cropping=cropping&&layer!=="caption";
   $("layerList").innerHTML=Object.keys(names).map((k,i)=>'<button class="layer '+k+(k===layer?' active':'')+'" data-layer="'+k+'" aria-pressed="'+(k===layer)+'"><i>'+["V2","V1","CC"][i]+'</i><b>'+names[k]+'</b></button>').join("");
@@ -390,7 +400,8 @@ function selectEntry(id){
   history.replaceState(null,"","/app?job="+encodeURIComponent(item.job.id)+"&clip="+encodeURIComponent(item.clip.id));setPage();openClip(item.job,item.clip);
 }
 async function refresh(){
-  state.jobs=await request("/api/jobs");mediaPool();
+  try{state.jobs=await request("/api/jobs");state.offline=false;mediaPool();}
+  catch(err){showUnavailable(err.message);return;}
   const items=entries();$("clipPicker").innerHTML=items.map(({job,clip})=>'<option value="'+escapeText(job.id+"/"+clip.id)+'">'+escapeText(clip.title||clip.id)+'</option>').join("");
   if(state.clip){$("clipPicker").value=state.job.id+"/"+state.clip.id;return;}
   const params=new URLSearchParams(location.search);

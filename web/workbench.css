@@ -29,3 +29,4 @@ dialog{border:1px solid #5c4a6a;background:var(--panel);color:var(--ink);border-
   .trim-point label { min-width: 52px; }
   .trim-point button { padding: 6px; }
 }
+.offline-panel{max-width:520px;margin:auto;padding:30px;text-align:center;border:1px solid var(--line);background:#1d1923;border-radius:12px}.offline-panel h2{font-size:22px;letter-spacing:-.04em}.offline-panel p{margin:10px auto 0;color:var(--dim);line-height:1.6}.offline-mark{width:42px;height:42px;margin:0 auto 14px;display:grid;place-items:center;border-radius:12px;background:#33263f;color:var(--violet);font-weight:800;font-size:21px}
