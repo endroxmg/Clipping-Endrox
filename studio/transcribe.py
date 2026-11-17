@@ -36,6 +36,8 @@ _remote_down_until = 0.0
 
 
 def model_ready() -> bool:
+    if config.LIGHT_MODE:
+        return True
     from . import fetch_model
     return fetch_model.ready()
 
@@ -202,6 +204,9 @@ def transcribe(audio: np.ndarray, on_progress=None) -> list:
     """Returns [{'w': word, 's': start_sec, 'e': end_sec}, ...] for the whole audio.
     Speech is cut at quiet moments into 12-24 s pieces; silent pieces are skipped."""
     global _remote_down_until
+    if config.LIGHT_MODE:
+        words, _ = multilingual(audio, "en", on_progress)
+        return words
     words = []
     todo = []
     for a, b in _chunks(audio):
@@ -280,13 +285,14 @@ def multilingual(audio, language, on_progress=None, vocabulary=""):
     global _whisper
     with _whisper_lock:
         if _whisper is None:
-            folder = config.DATA_DIR / "whisper-small"
-            model = str(folder) if (folder / "model.bin").is_file() else "small"
+            size = "tiny" if config.LIGHT_MODE else "small"
+            folder = config.DATA_DIR / f"whisper-{size}"
+            model = str(folder) if (folder / "model.bin").is_file() else size
             _whisper = WhisperModel(model, device="cpu", compute_type="int8", cpu_threads=THREADS,
                                     download_root=str(config.DATA_DIR / "whisper-cache"))
     samples = audio.astype(np.float32) / 32768
     segments, info = _whisper.transcribe(samples, language=None if language == "auto" else language,
-                                         beam_size=5, hotwords=vocabulary or None, word_timestamps=True, vad_filter=True,
+                                         beam_size=1 if config.LIGHT_MODE else 5, hotwords=vocabulary or None, word_timestamps=True, vad_filter=True,
                                          condition_on_previous_text=False)
     words = []
     for segment in segments:

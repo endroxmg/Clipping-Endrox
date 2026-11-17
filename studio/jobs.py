@@ -628,8 +628,10 @@ def _run_job(job):
         usage.set_context(job["creator"], meta["title"])
         span = (o["range_end"] or meta["duration"]) - (o["range_start"] or 0)
         pieces = span > LONG_VIDEO or meta["duration"] <= 0
-        if not pieces:  # shorter video: fetch all of it in the background while the audio is worked on
+        if not pieces and not config.LIGHT_MODE:  # shorter video: fetch all of it in the background while the audio is worked on
             video = fetch.submit(media.download, src["url"], d, int(o["quality"]))
+        if config.LIGHT_MODE:
+            pieces = True
         audio_file = media.download_audio(src["url"], d, lambda p: _set(job, progress=0.03 + 0.1 * p))
     else:
         pieces, audio_file = False, Path(src["path"])
@@ -696,7 +698,7 @@ def _run_job(job):
             render_one(job, clip, words_now)
 
     cpus = os.cpu_count() or 4
-    renders = ThreadPoolExecutor(2 if cpus < 8 else min(6, cpus // 6))  # more clips made at once on a bigger machine
+    renders = ThreadPoolExecutor(1 if config.LIGHT_MODE else (2 if cpus < 8 else min(6, cpus // 6)))  # more clips made at once on a bigger machine
     futures = []
     if hi <= lo:
         raise ValueError("Choose a range inside the source video.")
@@ -731,7 +733,7 @@ def _run_job(job):
         save(job)
     # The transcript of the next part is written while the AI is still reading this one (the AI is a wait on the
     # network, the transcript is work on this machine), so neither waits for the other.
-    ahead = ThreadPoolExecutor(2, thread_name_prefix="ahead")
+    ahead = ThreadPoolExecutor(1 if config.LIGHT_MODE else 2, thread_name_prefix="ahead")
     heard, now_on = {}, [done_blocks]
 
     def hear(i):
