@@ -18,12 +18,20 @@ fi
 
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  python3-venv python3-pip ffmpeg git caddy unzip fonts-noto-core fonts-noto-cjk
+  python3-venv python3-pip ffmpeg git caddy unzip iptables-persistent fonts-noto-core fonts-noto-cjk
+
+for port in 80 443; do
+  if ! sudo iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null; then
+    sudo iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
+  fi
+done
+sudo netfilter-persistent save
 
 if ! command -v deno >/dev/null 2>&1; then
   deno_archive="$(mktemp)"
-  curl -fL --retry 3 -o "$deno_archive" \
-    https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip
+  deno_version="$(curl -fsSL --max-time 20 https://dl.deno.land/release-latest.txt)"
+  curl -fsSL --retry 3 --max-time 120 -o "$deno_archive" \
+    "https://dl.deno.land/release/${deno_version}/deno-x86_64-unknown-linux-gnu.zip"
   sudo unzip -oq "$deno_archive" deno -d /usr/local/bin
   rm -f "$deno_archive"
 fi

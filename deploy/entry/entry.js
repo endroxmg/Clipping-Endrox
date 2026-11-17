@@ -82,3 +82,11 @@ for (const link of document.querySelectorAll("[data-path]")) {
   link.href = link.dataset.path;
   link.addEventListener("click", openConnected);
 }
+for (const link of header.querySelectorAll("nav a, .studio-import")) {
+  link.addEventListener("click", event => {
+    if (!workspace) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    location.assign(new URL(link.getAttribute("href"), workspace).href);
+  }, {capture: true});
+}
