@@ -21,15 +21,15 @@
       <a data-path="/app/settings/ai"><b>AI &amp; API key</b><span>Choose a provider, save your key and test it.</span></a>
       <a data-path="/app/operations"><b>Live &amp; publishing</b><span>Record channels and publish finished clips.</span></a>
     </div>
-    <section class="connection"><div><h2 id="place">Workspace on this computer</h2>
-      <p id="where">On your Mac, run Start Endrox.command while editing. Your videos and API key stay in that studio.</p></div>
-      <details><summary>Change workspace</summary><form id="connect">
+    <section class="connection"><div><h2 id="place">Connect a processing server</h2>
+      <p id="where">This Vercel page needs a running Endrox server to process videos and save your clips. Enter its HTTPS address or choose this computer.</p></div>
+      <details><summary>Connect workspace</summary><form id="connect">
         <label for="origin">Endrox server address</label><input id="origin" type="url" placeholder="https://studio.example.com" required>
         <p>Use the address of your running Endrox installation.</p>
         <button type="submit">Use server</button> <button type="button" id="local">Use this computer</button>
         <p role="alert" id="problem"></p>
       </form></details>
     </section>
-    <noscript>Enable JavaScript or <a href="http://127.0.0.1:8767/app/settings/ai">open the studio on this computer</a>.</noscript>
+    <noscript>Enable JavaScript to connect your Endrox studio.</noscript>
   </main>
 </body></html>

@@ -12,7 +12,16 @@ class StudioHeader extends HTMLElement {
       </nav>
       <a class="studio-import" id="import" href="/app/media?import=1"><span aria-hidden="true">+</span> Import footage</a>`;
     this.querySelector('img').src = document.querySelector('link[rel="icon"]').href;
-    if (this.hasAttribute('launcher')) this.querySelector('.studio-brand').href = '/';
+    if (this.hasAttribute('launcher')) {
+      this.querySelector('.studio-brand').href = '/';
+      for (const link of this.querySelectorAll('nav a, .studio-import')) {
+        link.addEventListener('click', event => {
+          event.preventDefault();
+          history.pushState(null, '', link.getAttribute('href'));
+          dispatchEvent(new PopStateEvent('popstate'));
+        });
+      }
+    }
     this.selectPath(location.pathname);
   }
 

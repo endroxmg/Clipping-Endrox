@@ -11,33 +11,19 @@ const routes = {
   "/app/settings": ["Settings", "Manage AI, connected accounts and storage for your studio.", "Open settings"]
 };
 const aliases = {"/workbench.html":"/app/editor", "/index.html":"/", "/settings":"/app/settings/ai", "/auth.html":"/login", "/admin.html":"/admin", "/reset.html":"/reset"};
-let path = location.pathname.replace(/\/$/, "") || "/";
-path = aliases[path] || path;
-if (path === "/app") path = "/app/editor";
+let path;
 const header = document.querySelector("studio-header");
-header.selectPath(path);
-for (const link of header.querySelectorAll("nav a, .studio-import")) {
-  link.dataset.path = link.getAttribute("href");
-}
-if (path !== "/") {
-  const [heading, hint, action] = routes[path] || ["Open your studio", "Continue to this page in your Endrox workspace.", "Continue"];
+function renderRoute() {
+  path = aliases[location.pathname.replace(/\/$/, "") || "/"] || location.pathname.replace(/\/$/, "") || "/";
+  if (path === "/app") path = "/app/editor";
+  header.selectPath(path);
+  const [heading, hint, action] = routes[path] || (path === "/" ? ["Make a clip", "Import a recording or paste a stream link. Pick a highlight, adjust the timing and captions, then export your video.", "Import footage"] : ["Open your studio", "Continue to this page in your Endrox workspace.", "Open studio"]);
   title.textContent = heading;
   document.getElementById("description").textContent = hint;
-  openStudio.textContent = action;
-  const target = new URL(path, localStudio);
-  // Only carry editor selection through the public launcher; credentials belong on the studio.
-  for (const key of ["job", "clip", "import"]) {
-    const value = new URLSearchParams(location.search).get(key);
-    if (value && path.startsWith("/app")) target.searchParams.set(key, value);
-  }
-  openStudio.dataset.path = target.pathname + target.search;
-  const repeated = Array.from(document.querySelectorAll(".actions a")).find(link => link.dataset.path === target.pathname);
-  if (repeated) {
-    repeated.dataset.path = "/app/media?import=1";
-    repeated.querySelector("b").textContent = "Import footage";
-    repeated.querySelector("span").textContent = "Make highlights from a video or stream link.";
-  }
+  openStudio.textContent = workspace ? action : "Connect to start";
+  openStudio.dataset.path = path === "/" ? "/app/media?import=1" : path + location.search;
 }
+addEventListener("popstate", renderRoute);
 function originFor(value) {
   const address = new URL(value);
   const local = ["localhost","127.0.0.1","[::1]"].includes(address.hostname);
@@ -46,26 +32,53 @@ function originFor(value) {
       address.pathname !== "/" || address.origin === location.origin) throw Error("Enter the root address of the Endrox server. For this Mac, select Use this computer.");
   return address.origin;
 }
+const form = document.getElementById("connect");
+const problem = document.getElementById("problem");
+const connection = document.querySelector(".connection");
+let workspace = "";
 function useWorkspace(origin) {
-  for (const link of document.querySelectorAll("[data-path]")) link.href = origin + link.dataset.path;
+  workspace = origin;
   const local = origin === localStudio;
   document.getElementById("origin").value = local ? "" : origin;
-  document.getElementById("place").textContent = local ? "Workspace on this computer" : "Workspace at " + new URL(origin).host;
-  document.getElementById("where").textContent = local ? "On your Mac, run Start Endrox.command while editing. Your videos and API key are saved in that studio." : "Studio links open this server. Sign in there to use your clips and settings.";
+  document.getElementById("place").textContent = origin ? (local ? "Using this computer" : "Connected to " + new URL(origin).host) : "Connect a processing server";
+  document.getElementById("where").textContent = origin ? (local ? "Endrox must be running on this computer. Your clips and API key are stored there." : "Open your clips, editor and settings on this Endrox server.") : "This Vercel page needs a running Endrox server to process videos and save your clips. Enter its HTTPS address or choose this computer.";
+  openStudio.textContent = origin ? (path === "/" ? "Import footage" : routes[path]?.[2] || "Open studio") : "Connect to start";
 }
-let initial = window.ENDROX_STUDIO_URL || localStudio;
-try { initial = originFor(localStorage.getItem(storageKey) || initial); } catch { initial = localStudio; }
+let initial = window.ENDROX_STUDIO_URL || "";
+try {
+  const saved = localStorage.getItem(storageKey);
+  initial = originFor(saved && saved !== localStudio ? saved : initial);
+} catch { initial = ""; }
 useWorkspace(initial);
-const form = document.getElementById("connect");
+renderRoute();
 function selectWorkspace(origin) {
   useWorkspace(origin);
-  try { localStorage.setItem(storageKey, origin); } catch { /* Links still work for this visit. */ }
-  document.getElementById("problem").textContent = "";
+  try { if (origin === localStudio) localStorage.removeItem(storageKey); else localStorage.setItem(storageKey, origin); } catch { /* Links still work for this visit. */ }
+  problem.textContent = "";
   form.closest("details").open = false;
 }
 form.onsubmit = event => {
   event.preventDefault();
   try { selectWorkspace(originFor(document.getElementById("origin").value.trim())); }
-  catch { document.getElementById("problem").textContent = "Enter your Endrox server’s HTTPS address, or choose Use this computer."; }
+  catch { problem.textContent = "Enter the HTTPS address of a running Endrox server."; }
 };
 document.getElementById("local").onclick = () => selectWorkspace(localStudio);
+function openConnected(event) {
+  if (!workspace) {
+    event.preventDefault();
+    form.closest("details").open = true;
+    connection.scrollIntoView({behavior:"smooth",block:"center"});
+    document.getElementById("origin").focus({preventScroll:true});
+    return;
+  }
+  const target = new URL(this.dataset.path, workspace);
+  const query = new URLSearchParams(location.search);
+  for (const key of ["job", "clip", "import"]) {
+    if (query.has(key) && path.startsWith("/app")) target.searchParams.set(key, query.get(key));
+  }
+  this.href = target.href;
+}
+for (const link of document.querySelectorAll("[data-path]")) {
+  link.href = link.dataset.path;
+  link.addEventListener("click", openConnected);
+}
