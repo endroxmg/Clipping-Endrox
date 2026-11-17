@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: endrox-studio
+    runtime: docker
+    plan: standard
+    repo: https://github.com/endroxmg/Clipping-Endrox
+    healthCheckPath: /healthz
+    disk:
+      name: endrox-data
+      mountPath: /data
+      sizeGB: 20
+    envVars:
+      - key: PORT
+        value: 8765
+      - key: PEAKCUT_PORT
+        value: 8765
+      - key: PEAKCUT_HOST
+        value: 0.0.0.0
+      - key: PEAKCUT_DATA
+        value: /data
+      - key: PEAKCUT_ACCOUNTS
+        value: 1
+      - key: PEAKCUT_TRUST_PROXY
+        value: 1
+      - key: PEAKCUT_JOB_WORKERS
+        value: 1
