@@ -1,6 +1,6 @@
 import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 
-const value = process.env.ENDROX_STUDIO_URL?.trim();
+const value = process.env.ENDROX_STUDIO_URL?.trim() || "https://80-225-245-60.sslip.io";
 let origin = "";
 if (value) {
   const url = new URL(value);
