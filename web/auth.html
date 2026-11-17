@@ -107,6 +107,8 @@ input::placeholder{color:var(--faint)}
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 const $ = id => document.getElementById(id), up = location.pathname === "/signup";
+const setup = up ? new URLSearchParams(location.search).get("setup") || "" : "";
+if (setup) history.replaceState(null, "", "/signup");
 const next = new URLSearchParams(location.search).get("next");
 const dest = next && /^\/(?![\/\\])[^\\\t\r\n]*$/.test(next) ? next : "/app";
 document.title = up ? "Create your Endrox account" : "Sign in to Endrox";
@@ -138,7 +140,7 @@ $("f").addEventListener("submit", async e => {
   $("go").disabled = true;
   try {
     const r = await fetch(up ? "/api/auth/signup" : "/api/auth/login", {method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({email, password, name:$("name").value.trim()})});
+      body:JSON.stringify({email, password, name:$("name").value.trim(), ...(up && setup ? {setup} : {})})});
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(typeof d.detail === "string" ? d.detail : "Something went wrong. Try again.");
     location.href = dest;

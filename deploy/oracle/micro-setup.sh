@@ -41,10 +41,12 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-micro.txt
 
 if [[ ! -f .env ]]; then
+  setup_token="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
   cat > .env <<EOF
 PEAKCUT_HOST=127.0.0.1
 PEAKCUT_PUBLIC_URL=https://${hostname}
 PEAKCUT_ACCOUNTS=1
+PEAKCUT_SETUP_TOKEN=${setup_token}
 PEAKCUT_TRUST_PROXY=1
 PEAKCUT_LIGHT_MODE=1
 PEAKCUT_FETCH_MODEL=0
@@ -97,3 +99,6 @@ sudo systemctl enable --now endrox
 sudo systemctl enable caddy
 sudo systemctl restart caddy
 echo "Endrox configured at https://${hostname}"
+if grep -q '^PEAKCUT_SETUP_TOKEN=' .env; then
+  echo "Create your owner account: https://${hostname}/signup?setup=$(sed -n 's/^PEAKCUT_SETUP_TOKEN=//p' .env)"
+fi

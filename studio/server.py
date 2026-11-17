@@ -449,11 +449,27 @@ def _signed_in(request: Request, user, first: bool, redirect=None):
 
 @app.post("/api/auth/signup")
 def signup(request: Request, body: dict = Body(...)):
+    setup = str(body.get("setup") or "")
+    expected = config.env("PEAKCUT_SETUP_TOKEN", "")
+    if setup and (not expected or not hmac.compare_digest(setup, expected)):
+        raise HTTPException(403, "That owner setup link is not valid.")
+    if setup:
+        with db.engine.connect() as c:
+            existing = c.execute(sa.select(sa.func.count()).select_from(db.users).where(db.users.c.is_admin == sa.true())).scalar()
+        if existing:
+            raise HTTPException(409, "The owner account has already been created. Sign in instead.")
     try:
         auth.throttle("signup:" + _ip(request), 8, 3600)
         user, first = auth.signup(str(body.get("email", "")), str(body.get("password", "")), str(body.get("name", "")))
     except auth.AuthError as e:
         raise HTTPException(400, str(e))
+    if setup:
+        with db.engine.begin() as c:
+            existing = c.execute(sa.select(sa.func.count()).select_from(db.users).where(db.users.c.is_admin == sa.true())).scalar()
+            if not existing:
+                c.execute(db.users.update().where(db.users.c.id == user.id).values(is_admin=True))
+                admins._log(c, user.id, "owner-setup", user.id, "Owner account created")
+        user = auth.get_user(user.id)
     if not auth.is_verified(user.id):
         auth.send_verify(user)
     return _signed_in(request, user, first)
