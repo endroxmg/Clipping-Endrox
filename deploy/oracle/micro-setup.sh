@@ -18,7 +18,15 @@ fi
 
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  python3-venv python3-pip ffmpeg git caddy fonts-noto-core fonts-noto-cjk
+  python3-venv python3-pip ffmpeg git caddy unzip fonts-noto-core fonts-noto-cjk
+
+if ! command -v deno >/dev/null 2>&1; then
+  deno_archive="$(mktemp)"
+  curl -fL --retry 3 -o "$deno_archive" \
+    https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip
+  sudo unzip -oq "$deno_archive" deno -d /usr/local/bin
+  rm -f "$deno_archive"
+fi
 
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
@@ -78,5 +86,6 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now endrox
-sudo systemctl enable --now caddy
+sudo systemctl enable caddy
+sudo systemctl restart caddy
 echo "Endrox configured at https://${hostname}"
