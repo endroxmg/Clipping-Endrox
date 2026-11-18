@@ -1,5 +1,11 @@
 # Endrox Cut Room
 
+## Windows desktop app
+
+Download the latest **Endrox-Windows-x64.zip** from [Releases](https://github.com/endroxmg/Clipping-Endrox/releases), extract the entire folder and open **Endrox.exe**. It runs the clipping engine on that PC and opens the studio in your browser. No server address, Python, FFmpeg or Deno setup is needed. Add your AI key in **Settings → AI & API key**. Your videos, clips and key stay under `%LOCALAPPDATA%\Endrox\data` unless you choose another storage folder in Settings. The first start downloads the speech model (about 480 MB). Stream links and AI still need an internet connection. This is a Windows x64 build; macOS and Linux need their own packages. The Vercel site is separate and still needs a connected processor for cloud clipping.
+
+The Windows release is built by [GitHub Actions](.github/workflows/windows-desktop.yml) when a `desktop-v*` tag is pushed. The build checks that the packaged app starts and serves the studio before publishing it.
+
 Open **Start Endrox.command** on this Mac. Import a recording or video link and choose **Webcam stack** to place the embedded camera above gameplay. Endrox samples several frames to locate the camera. Use **Adjust source crop** to draw the exact region for either video layer.
 
 Open **Settings → AI & API key**, choose a provider, paste your key and select **Save and test**. A successful test names the model that answered. On shared installations, an administrator manages the key. **Live & publishing** opens channels, recording and publishing controls.

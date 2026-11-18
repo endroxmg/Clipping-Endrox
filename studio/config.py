@@ -3,9 +3,11 @@ on a laptop and on a server. Nothing here is specific to one machine."""
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+DESKTOP_HOME = (Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "Endrox") if getattr(sys, "frozen", False) else ROOT
 
 
 def _load_dotenv():
@@ -54,7 +56,7 @@ def _read_secret(var: str, file_var: str, pattern: str) -> str:
 # ---------------------------------------------------------------- where things live
 # Everything PeakCut keeps is in one folder. Which one: PEAKCUT_DATA in .env if it is set; otherwise the folder the
 # owner chose in Settings, Storage (kept in storage.json); otherwise "data" inside PeakCut's own folder.
-STORAGE_FILE = Path(env("PEAKCUT_STORAGE_FILE") or ROOT / "storage.json")
+STORAGE_FILE = Path(env("PEAKCUT_STORAGE_FILE") or DESKTOP_HOME / "storage.json")
 
 
 def _move_folder(old: Path, new: Path) -> bool:
@@ -102,7 +104,7 @@ def _data_folder():
     except (OSError, ValueError):
         chosen = {}
     if not chosen.get("path"):
-        return ROOT / "data", "default"
+        return DESKTOP_HOME / "data", "default"
     new = Path(chosen["path"])
     try:
         new.mkdir(parents=True, exist_ok=True)

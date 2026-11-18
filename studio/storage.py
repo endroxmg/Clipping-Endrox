@@ -97,6 +97,19 @@ _PICK = ("import tkinter as tk\nfrom tkinter import filedialog\nr = tk.Tk()\nr.w
 
 def pick_folder() -> str:
     """The computer's own "choose a folder" window. Returns the folder, or "" if it was closed or cannot be shown."""
+    if getattr(sys, "frozen", False):
+        # A frozen executable cannot be invoked with Python's `-c` option.
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            chosen = filedialog.askdirectory(title="Choose where Endrox keeps videos and clips")
+            root.destroy()
+            return chosen or ""
+        except Exception:  # a desktop without a usable window system
+            return ""
     try:
         r = subprocess.run([sys.executable, "-c", _PICK], capture_output=True, text=True, timeout=600,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))

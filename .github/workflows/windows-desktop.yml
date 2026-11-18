@@ -1,0 +1,63 @@
+name: Windows desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller==6.16.0
+      - name: Bundle video and stream tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force packaging/bin | Out-Null
+          Invoke-WebRequest -Uri 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip' -OutFile "$env:RUNNER_TEMP/ffmpeg.zip"
+          Expand-Archive "$env:RUNNER_TEMP/ffmpeg.zip" "$env:RUNNER_TEMP/ffmpeg"
+          $ffmpeg = Get-ChildItem "$env:RUNNER_TEMP/ffmpeg" -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          $ffprobe = Get-ChildItem "$env:RUNNER_TEMP/ffmpeg" -Recurse -Filter ffprobe.exe | Select-Object -First 1
+          if (!$ffmpeg -or !$ffprobe) { throw 'FFmpeg download did not contain both tools' }
+          Copy-Item $ffmpeg.FullName packaging/bin/ffmpeg.exe
+          Copy-Item $ffprobe.FullName packaging/bin/ffprobe.exe
+          Invoke-WebRequest -Uri 'https://github.com/denoland/deno/releases/download/v2.5.6/deno-x86_64-pc-windows-msvc.zip' -OutFile "$env:RUNNER_TEMP/deno.zip"
+          Expand-Archive "$env:RUNNER_TEMP/deno.zip" packaging/bin
+          & packaging/bin/ffmpeg.exe -version | Select-Object -First 1
+          & packaging/bin/deno.exe --version
+      - name: Build Endrox.exe
+        run: python -m PyInstaller --noconfirm --distpath dist --workpath build packaging/endrox-windows.spec
+      - name: Check packaged app
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath 'dist/Endrox/Endrox.exe' -ArgumentList '--self-test' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Endrox self-test failed with exit code $($process.ExitCode)" }
+      - name: Zip portable Windows app
+        shell: pwsh
+        run: |
+          Copy-Item packaging/WINDOWS-README.txt dist/Endrox/README.txt
+          Compress-Archive -Path dist/Endrox -DestinationPath Endrox-Windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Endrox-Windows-x64
+          path: Endrox-Windows-x64.zip
+          if-no-files-found: error
+      - name: Publish tagged build
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: gh release create "$env:GITHUB_REF_NAME" Endrox-Windows-x64.zip --title "Endrox Windows $env:GITHUB_REF_NAME" --notes "Download the ZIP, extract the whole Endrox folder, and double-click Endrox.exe. Windows x64 only. The first run downloads the speech model. Add your AI key in Settings inside the app."
