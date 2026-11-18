@@ -22,7 +22,7 @@ jobs:
       - name: Install Python packages
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pyinstaller==6.16.0 pywebview==6.1
+          python -m pip install -r requirements.txt pyinstaller==6.16.0
       - name: Bundle video and stream tools
         shell: pwsh
         run: |
