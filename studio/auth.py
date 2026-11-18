@@ -201,6 +201,18 @@ def _create(email: str, name: str, password_hash=None, google_sub=None):
 def signup(email: str, password: str, name: str = ""):
     """A new account with an email and password. Only a salted scrypt hash of the password is kept."""
     _check_password_rules(password)
+    if config.env("ENDROX_DESKTOP") == "1" and config.HOST == "127.0.0.1":
+        email = email.strip().lower()
+        if not EMAIL_RE.match(email):
+            raise AuthError("Enter a valid email address.")
+        owner = local_user()
+        with db.engine.begin() as c:
+            changed = c.execute(db.users.update().where(db.users.c.id == owner.id,
+                                db.users.c.password_hash.is_(None), db.users.c.email == "you@localhost")
+                                .values(email=email, password_hash=hash_password(password), name=name.strip()[:120] or "Owner"))
+            if changed.rowcount != 1:
+                raise AuthError("This Windows profile already has an Endrox account. Sign in instead.")
+        return get_user(owner.id), True
     return _create(email, name, password_hash=hash_password(password))
 
 

@@ -110,7 +110,7 @@ const $ = id => document.getElementById(id), up = location.pathname === "/signup
 const setup = up ? new URLSearchParams(location.search).get("setup") || "" : "";
 if (setup) history.replaceState(null, "", "/signup");
 const next = new URLSearchParams(location.search).get("next");
-const dest = next && /^\/(?![\/\\])[^\\\t\r\n]*$/.test(next) ? next : "/app";
+const dest = next && /^\/(?![\/\\])[^\\\t\r\n]*$/.test(next) ? next : "/app/media";
 document.title = up ? "Create your Endrox account" : "Sign in to Endrox";
 $("h").textContent = up ? "Create your account" : "Welcome back";
 $("p").textContent = up ? "Start clipping in a couple of minutes." : "Sign in to get back to your clips.";

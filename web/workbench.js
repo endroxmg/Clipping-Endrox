@@ -436,7 +436,7 @@ $("importForm").onsubmit=async e=>{
         if(last)throw last;msg.textContent="Uploading "+Math.round((i+1)/upload.parts*100)+"%";
       }
       await post("/api/upload/"+upload.id+"/finish",{});upload=null;
-    }else await post("/api/jobs",{url,options});
+    }else await post("/api/jobs",{url,options,creator:selectedBroadcast?.url===url?selectedBroadcast.id:null});
     e.target.reset();$("importDialog").close();msg.textContent="";history.pushState(null,"","/app/media");setPage();await refresh();notify("Footage queued for clipping.");
   }catch(err){msg.textContent=err.message;if(upload)fetch("/api/upload/"+upload.id,{method:"DELETE"}).catch(()=>{});}
   finally{button.disabled=false;}
@@ -489,3 +489,64 @@ function downloadSrt(){
 }
 $("properties").addEventListener("change",e=>{if(e.target.id==="subtitleFile")importSubtitles(e.target.files[0]).catch(err=>notify(err.message));});
 $("properties").addEventListener("click",e=>{if(e.target.id==="exportSrt")downloadSrt();});
+
+let channelRequest = 0;
+let channelRows = [];
+let selectedBroadcast = null;
+async function showBroadcasts(){
+  const id = $("channelChoice").value, version = ++channelRequest;
+  $("broadcasts").replaceChildren();
+  $("channelStatus").textContent = id ? "Loading recent videos and streams…" : "";
+  if(!id)return;
+  const creator=channelRows.find(row=>row.id===id);
+  const liveProfile=Object.values(creator?.profiles||{}).find(profile=>profile.live);
+  if(liveProfile){
+    const button=document.createElement("button");
+    button.textContent="Live now · Recording controls";
+    button.onclick=()=>location.assign("/app/creators/"+encodeURIComponent(id));
+    $("broadcasts").append(button);
+  }
+  try{
+    const rows = await request("/api/creators/"+encodeURIComponent(id)+"/catalog");
+    if(version!==channelRequest)return;
+    $("channelStatus").textContent = rows.length ? "Select a video or past stream" : "No public recordings found. You can still import footage.";
+    for(const row of rows){
+      const button = document.createElement("button");
+      button.textContent = row.title;
+      button.onclick = ()=>{
+        $("importForm").reset();
+        selectedBroadcast = {id,url:row.url};
+        $("link").value = row.url;
+        $("importForm").querySelector("details").open = true;
+        $("importDialog").showModal();
+      };
+      $("broadcasts").append(button);
+    }
+  }catch(err){if(version===channelRequest)$("channelStatus").textContent=err.message;}
+}
+async function loadChannels(selected){
+  const rows = await request("/api/creators");
+  channelRows = rows;
+  const choice = $("channelChoice");
+  choice.replaceChildren(new Option("Choose a channel",""));
+  for(const row of rows.filter(row=>row.channel))choice.add(new Option(row.name,row.id));
+  choice.value = selected || choice.options[1]?.value || "";
+  await showBroadcasts();
+}
+$("channelChoice").onchange=showBroadcasts;
+$("addChannel").onsubmit=async event=>{
+  event.preventDefault();
+  const button=event.submitter;
+  button.disabled=true;
+  try{
+    const raw=$("channelUrl").value.trim();
+    const url=new URL(raw.includes("://")?raw:"https://"+raw);
+    const name=decodeURIComponent(url.pathname.split("/").filter(Boolean).pop()||url.hostname);
+    const channel=await post("/api/creators",{name,channel:url.href});
+    $("channelUrl").value="";
+    await loadChannels(channel.id);
+  }catch(err){$("channelStatus").textContent=err.message;}
+  finally{button.disabled=false;}
+};
+$("importDialog").addEventListener("close",()=>{selectedBroadcast=null;});
+if(mediaPage())loadChannels().catch(err=>{$("channelStatus").textContent=err.message;});

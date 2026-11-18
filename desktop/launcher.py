@@ -8,7 +8,6 @@ import threading
 import time
 import urllib.error
 import urllib.request
-import webbrowser
 from pathlib import Path
 
 
@@ -23,7 +22,8 @@ def _prepare():
     if tools.is_dir():
         os.environ["PATH"] = str(tools) + os.pathsep + os.environ.get("PATH", "")
     os.environ["PEAKCUT_HOST"] = "127.0.0.1"
-    os.environ["PEAKCUT_ACCOUNTS"] = "0"
+    os.environ["PEAKCUT_ACCOUNTS"] = "1"
+    os.environ["ENDROX_DESKTOP"] = "1"
     os.environ["PEAKCUT_UPDATE_CHECK"] = "0"
     _home().mkdir(parents=True, exist_ok=True)
 
@@ -51,6 +51,10 @@ def _server(port):
 def _self_test():
     """Exercise the packaged executable on the Windows build runner."""
     import shutil
+    import json
+    import http.cookiejar
+    import webview
+    from webview.platforms import edgechromium
     for binary in ("ffmpeg", "ffprobe", "deno"):
         if not shutil.which(binary):
             raise RuntimeError(f"{binary} is missing from the desktop package")
@@ -64,8 +68,18 @@ def _self_test():
         try:
             for _ in range(90):
                 if _ready(port):
-                    with urllib.request.urlopen(f"http://127.0.0.1:{port}/app/media", timeout=5) as response:
-                        if response.status != 200 or b"Endrox" not in response.read():
+                    client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+                    base = f"http://127.0.0.1:{port}"
+                    payload = json.dumps({"email":"desktop@example.com","password":"Endrox-check-023!"}).encode()
+                    req = urllib.request.Request(base + "/api/auth/signup", data=payload,
+                                                 headers={"Content-Type":"application/json", "Origin":base})
+                    with client.open(req, timeout=10) as signed:
+                        if not json.load(signed)["user"]["is_admin"]:
+                            raise RuntimeError("Owner cannot configure the API key")
+                    with client.open(base + "/api/ai", timeout=5):
+                        pass
+                    with client.open(base + "/app/media", timeout=5) as response:
+                        if response.status != 200 or b"Channel library" not in response.read():
                             raise RuntimeError("The bundled studio page did not load")
                     print("Desktop package: server, web page, FFmpeg, and Deno are ready.")
                     return
@@ -82,63 +96,28 @@ def _self_test():
 
 
 def _desktop():
-    import tkinter as tk
+    import webview
 
     port = _free_port()
     url = f"http://127.0.0.1:{port}/app/media"
-    log_path = _home() / "desktop.log"
-    log = log_path.open("a", encoding="utf-8")
-    env = os.environ.copy()
-    env["PEAKCUT_PORT"] = str(port)
-    process = subprocess.Popen([sys.executable, "--server", str(port)], env=env,
-                               stdout=log, stderr=subprocess.STDOUT,
-                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    log.close()
-
-    window = tk.Tk()
-    window.title("Endrox Studio")
-    window.geometry("420x310")
-    window.resizable(False, False)
-    window.configure(bg="#100d19")
-    tk.Label(window, text="ENDROX", fg="#c9a7ff", bg="#100d19",
-             font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=28, pady=(24, 4))
-    tk.Label(window, text="Your clipping studio", fg="#ffffff", bg="#100d19",
-             font=("Segoe UI", 21, "bold")).pack(anchor="w", padx=28)
-    status = tk.StringVar(value="Starting your studio…")
-    tk.Label(window, textvariable=status, fg="#b8aacb", bg="#100d19",
-             font=("Segoe UI", 10)).pack(anchor="w", padx=28, pady=(10, 20))
-
-    def open_studio():
-        webbrowser.open(url)
-
-    launch = tk.Button(window, text="Open studio", command=open_studio, state="disabled",
-                       bg="#a772ee", fg="#130c1e", activebackground="#c49af7",
-                       relief="flat", font=("Segoe UI", 11, "bold"), padx=20, pady=9)
-    launch.pack(anchor="w", padx=28)
-    tk.Button(window, text="Open clips folder", command=lambda: os.startfile(_home() / "data"),
-              bg="#100d19", fg="#c9a7ff", activebackground="#20152e",
-              activeforeground="#ffffff", relief="flat", font=("Segoe UI", 10)).pack(anchor="w", padx=24, pady=(14, 0))
-    tk.Label(window, text="Close this window to stop Endrox.", fg="#82748f", bg="#100d19",
-             font=("Segoe UI", 9)).pack(anchor="w", padx=28, pady=(16, 0))
-
-    def stop():
-        if process.poll() is None:
+    with (_home() / "desktop.log").open("a", encoding="utf-8") as log:
+        process = subprocess.Popen([sys.executable, "--server", str(port)], stdout=log,
+                                   stderr=log, creationflags=subprocess.CREATE_NO_WINDOW)
+        try:
+            window = webview.create_window("Endrox Studio", html="<body style='background:#141118;color:white;font:20px Segoe UI;padding:48px'>Opening Endrox Studio…</body>", width=1200, height=820)
+            def connect():
+                for _ in range(120):
+                    if _ready(port):
+                        window.load_url(url)
+                        return
+                    if process.poll() is not None:
+                        break
+                    time.sleep(.5)
+                window.load_html("<h2>Endrox could not start</h2><p>Open %LOCALAPPDATA%&#92;Endrox&#92;desktop.log for details.</p>")
+            webview.start(connect, gui="edgechromium", private_mode=True)
+        finally:
             process.terminate()
-        window.destroy()
-
-    window.protocol("WM_DELETE_WINDOW", stop)
-
-    def watch():
-        if process.poll() is not None:
-            window.after(0, lambda: status.set(f"Could not start. See {log_path}"))
-            return
-        if _ready(port):
-            window.after(0, lambda: (status.set("Ready on this computer"), launch.configure(state="normal"), open_studio()))
-            return
-        window.after(500, watch)
-
-    window.after(500, watch)
-    window.mainloop()
+            process.wait()
 
 
 def main():

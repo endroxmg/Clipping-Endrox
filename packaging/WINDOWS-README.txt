@@ -1,8 +1,8 @@
 ENDROX FOR WINDOWS
 
 1. Keep the whole Endrox folder together. Double-click Endrox.exe.
-2. Endrox opens your browser on this computer. Add your AI key in Settings > AI & API key.
-3. Import a video file or paste a stream/video link. Edit the clips in the studio.
+2. Create your local account or sign in to the Endrox window. Add your AI key in Settings > AI & API key.
+3. Add a channel and select a recording, or import a file or video link. Edit the clips in the studio.
 4. Close the Endrox window when finished. Your work stays in %LOCALAPPDATA%\Endrox\data.
 
 The first start downloads a speech model (about 480 MB). An internet connection is

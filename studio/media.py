@@ -341,3 +341,41 @@ def motion_per_second(path, start, end):
         return np.r_[0., changes][:len(frames)//2*2].reshape(-1, 2).mean(axis=1)
     except (OSError, subprocess.SubprocessError, ValueError):
         return None
+
+
+def channel_catalog(channel):
+    """Read recent public uploads and archived broadcasts without downloading video."""
+    from urllib.parse import urlsplit
+    from . import profiles
+    parsed = urlsplit(channel if "://" in channel else "https://" + channel)
+    host = (parsed.hostname or "").removeprefix("www.")
+    path = re.sub(r"/(?:videos|streams|featured|live)$", "", parsed.path.rstrip("/"))
+    if host == "youtube.com" and re.fullmatch(r"/(?:@[^/?#]+|(?:channel|user|c)/[\w.-]+)", path):
+        feeds = ["https://www.youtube.com" + path + suffix for suffix in ("/streams", "/videos")]
+    elif host == "twitch.tv" and re.fullmatch(r"/[\w]+", path):
+        feeds = ["https://www.twitch.tv" + path + "/videos?filter=archives&sort=time"]
+    elif host == "kick.com" and re.fullmatch(r"/[\w-]+", path):
+        _, raw = profiles._get("https://kick.com/api/v2/channels" + path + "/videos", "application/json")
+        return [{"title": item.get("session_title") or "Past broadcast",
+                 "url": "https://kick.com" + path + "/videos/" + uuid}
+                for item in json.loads(raw)[:24] if isinstance(item, dict)
+                and re.fullmatch(r"[\w-]+", uuid := str((item.get("video") or {}).get("uuid") or ""))]
+    else:
+        raise ValueError("Paste a channel profile link from YouTube, Twitch or Kick.")
+    rows = {}
+    failures = 0
+    for feed in feeds:
+        try:
+            with _ydl({"extract_flat": True, "playlistend": 24, "ignoreerrors": False}) as downloader:
+                result = downloader.extract_info(feed, download=False)
+                for entry in result.get("entries") or []:
+                    if not entry or entry.get("live_status") in ("is_upcoming", "is_live"):
+                        continue
+                    url = entry.get("webpage_url") or entry.get("url") or ""
+                    if site_allowed(url):
+                        rows[url] = {"url": url, "title": entry.get("title") or "Video"}
+        except Exception:
+            failures += 1
+    if failures == len(feeds):
+        raise ValueError("The platform could not load this channel. Retry or paste a video link.")
+    return list(rows.values())

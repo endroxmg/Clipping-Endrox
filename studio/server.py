@@ -1251,6 +1251,19 @@ def channel_preview(request: Request, url: str = ""):
         raise HTTPException(422, "Couldn't open that channel. Check the link.")
 
 
+@app.get("/api/creators/{cid}/catalog")
+def channel_catalog(cid: str):
+    creator = creators.get(cid)
+    if not creator:
+        raise HTTPException(404, "Channel not found.")
+    try:
+        return _lookup(media.channel_catalog, creator["channel"])
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(422, "Could not load public videos. Check the channel link or import a video directly.")
+
+
 @app.get("/api/creators/{cid}/avatar")
 def creator_avatar(cid: str, p: str = ""):
     c = creators.get(cid)
