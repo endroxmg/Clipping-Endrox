@@ -1,7 +1,7 @@
 name: Build Microsoft Store package
 on:
   push:
-    paths: ['packaging/store/**', '.github/workflows/store.yml']
+    paths: ['packaging/store/**', 'packaging/store-check.ps1', '.github/workflows/store.yml']
   workflow_dispatch:
     inputs:
       identity: {description: 'Partner Center Package/Identity/Name', required: true}
@@ -24,6 +24,8 @@ jobs:
           Expand-Archive Endrox-Windows-x64.zip -DestinationPath stage
           if (!(Test-Path stage/Endrox/Endrox.exe)) { throw 'Released desktop executable missing' }
           Copy-Item packaging/store/* stage -Recurse
+      - name: Open the extracted Windows release and verify sign-in
+        run: ./packaging/store-check.ps1 -Executable stage/Endrox/Endrox.exe
       - name: Set reserved Microsoft identity
         if: github.event_name == 'workflow_dispatch'
         env:
