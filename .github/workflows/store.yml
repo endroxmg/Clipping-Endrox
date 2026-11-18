@@ -1,0 +1,53 @@
+name: Build Microsoft Store package
+on:
+  push:
+    paths: ['packaging/store/**', '.github/workflows/store.yml']
+  workflow_dispatch:
+    inputs:
+      identity: {description: 'Partner Center Package/Identity/Name', required: true}
+      publisher: {description: 'Partner Center Package/Identity/Publisher', required: true}
+      publisher_name: {description: 'Partner Center publisher display name', required: true}
+      display_name: {description: 'Reserved app name', required: true}
+      version: {description: 'Four-part Store version ending in .0', default: '1.0.0.0', required: true}
+permissions:
+  contents: read
+jobs:
+  pack:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage released Endrox desktop app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download desktop-v0.2.1 --pattern Endrox-Windows-x64.zip
+          Expand-Archive Endrox-Windows-x64.zip -DestinationPath stage
+          if (!(Test-Path stage/Endrox/Endrox.exe)) { throw 'Released desktop executable missing' }
+          Copy-Item packaging/store/* stage -Recurse
+      - name: Set reserved Microsoft identity
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          PACKAGE_NAME: ${{ inputs.identity }}
+          PUBLISHER: ${{ inputs.publisher }}
+          PUBLISHER_NAME: ${{ inputs.publisher_name }}
+          APP_NAME: ${{ inputs.display_name }}
+          APP_VERSION: ${{ inputs.version }}
+        run: |
+          [xml]$xml = Get-Content stage/AppxManifest.xml -Raw
+          $xml.Package.Identity.SetAttribute('Name', $env:PACKAGE_NAME)
+          $xml.Package.Identity.SetAttribute('Publisher', $env:PUBLISHER)
+          $xml.Package.Identity.SetAttribute('Version', $env:APP_VERSION)
+          $xml.Package.Properties.PublisherDisplayName = $env:PUBLISHER_NAME
+          $xml.Package.Properties.DisplayName = $env:APP_NAME
+          $xml.Package.Applications.Application.VisualElements.SetAttribute('DisplayName', $env:APP_NAME)
+          $xml.Save((Resolve-Path stage/AppxManifest.xml).Path)
+      - name: Validate and pack with Windows SDK
+        run: |
+          $packer = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/makeappx.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          & $packer.FullName pack /d stage /p Endrox-x64.msix /o
+          if ($LASTEXITCODE) { throw "MakeAppx failed ($LASTEXITCODE)" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event_name == 'workflow_dispatch' && 'Endrox-Store' || 'Endrox-Packaging-Test' }}
+          path: Endrox-x64.msix
+          compression-level: 0

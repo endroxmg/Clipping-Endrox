@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">
+  <Identity Name="Endrox.Studio.PackagingTest" Publisher="CN=Endrox Packaging Test" Version="1.0.0.0" ProcessorArchitecture="x64"/>
+  <Properties><DisplayName>Endrox Studio</DisplayName><PublisherDisplayName>Endrox Packaging Test</PublisherDisplayName><Logo>Assets\Store.png</Logo></Properties>
+  <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0"/></Dependencies>
+  <Resources><Resource Language="en-US"/></Resources>
+  <Applications><Application Id="Endrox" Executable="Endrox\Endrox.exe" EntryPoint="Windows.FullTrustApplication">
+    <uap:VisualElements DisplayName="Endrox Studio" Description="Clip streams and edit captioned highlights" Square150x150Logo="Assets\Tile.png" Square44x44Logo="Assets\Icon.png" BackgroundColor="#141118"/>
+  </Application></Applications>
+  <Capabilities><rescap:Capability Name="runFullTrust"/></Capabilities>
+</Package>
